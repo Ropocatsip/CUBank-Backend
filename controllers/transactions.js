@@ -58,6 +58,24 @@ exports.updateAccount = async (req, res, next) => {
   try {
     const date = new Date();
     let user = req.user;
+    function addTransaction(user, targetUser, action, balance, date) {
+      user.transactions.push({
+        title: action + ' to',
+        target: targetUser.accountId,
+        among: balance,
+        balance: user.balance,
+        date: date,
+      });
+    
+      targetUser.transactions.push({
+        title: action + ' from',
+        target: user.accountId,
+        among: balance,
+        balance: user.balance,
+        date: date,
+      });
+    }
+
     if (req.body.action == "deposit") {
       user.balance = user.balance + req.body.balance;
       user.transactions.push({
@@ -98,24 +116,12 @@ exports.updateAccount = async (req, res, next) => {
         return res.status(400).json({ success: false,status:400,msg:'Cannot transfer to own account' });
       }
       user.balance = user.balance - req.body.balance;
-      user.transactions.push({
-        title: req.body.action + ' to',
-        target: targetUser.accountId,
-        among: req.body.balance,
-        balance: user.balance,
-        date: date,
-      });
+      targetUser.balance = targetUser.balance + req.body.balance;
+      addTransaction(user, targetUser, req.body.action, req.body.balance, date);
+
       user.validate();
       await User.findByIdAndUpdate(user.id, user);
 
-      targetUser.balance = targetUser.balance + req.body.balance;
-      targetUser.transactions.push({
-        title: req.body.action + ' from',
-        target: user.accountId,
-        among: req.body.balance,
-        balance: user.balance,
-        date: date,
-      });
       targetUser.validate();
       await User.findByIdAndUpdate(targetUser.id, targetUser);
 
